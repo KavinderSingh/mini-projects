@@ -4,7 +4,7 @@ from flask_mysqldb import MySQL
 import MySQLdb
 from wtforms import Form, StringField, TextField, PasswordField, validators
 from passlib.hash import sha256_crypt
-
+from functools import wraps
 app = Flask(__name__)
 
 #configuring MySQL
@@ -12,7 +12,7 @@ app.config['MySQL_HOST'] = 'localhost'
 app.config['MySQL_USER'] = 'kavi'
 app.config['MySQL_PASSWORD'] = '12345'
 app.config['MySQL_DB'] = 'flaskapp'
-app.config['MySQL_USER'] = 'DictCursor' 
+app.config['MYSQL_CURSORCLASS'] = 'DictCursor' 
 
 
 mysql = MySQL(app)
@@ -56,7 +56,7 @@ def register():
         password = sha256_crypt.encrypt(str(form.password.data))
 
 
-        #cursor
+        # defining cursor
 
         cur = mysql.connection.cursor()
 
@@ -75,9 +75,67 @@ def register():
         #flash message
         flash("Registration Successful!", "success")
 
-        redirect(url_for('index'))
+        return redirect(url_for('register'))
 
     return render_template('register.html', form = form)
+
+# login
+@app.route('/login', methods = ['GET','POST'])
+
+def login():
+    if request.method == 'POST':
+        # get form data/fields
+        username = request.form['username']
+        password_user = request.form['password']
+
+        cur = mysql.connection.cursor()
+
+        cur.execute("USE flaskapp")
+
+        result = cur.execute("SELECT * FROM users WHERE username = %s LIMIT 1" , [username])
+
+        if(result > 0):
+            data = cur.fetchone()  #fetchone()
+            password = data['password']
+
+            if(sha256_crypt.verify(password_user, password)):
+                session['logged_in'] = True
+                session['username'] = username
+                flash('You are now logged in', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                error = "Invalid login"
+                return render_template('login.html', error=error)
+
+            #close the connection
+            cur.close()
+        else:
+            error = "User not found"
+            return render_template('login.html', error=error)
+    return render_template('login.html')
+
+# Check if user logged in
+def is_logged_in(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'logged_in' in session:
+            return f(*args, **kwargs)
+        else:
+            flash("Unauthorised, please first login", 'danger')
+            return redirect(url_for('login'))
+    return wrap
+
+@app.route('/dashboard')
+@is_logged_in
+def dashboard():
+    return render_template('dashboard.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You are now logged out', "success")
+
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.secret_key = 'secret'
