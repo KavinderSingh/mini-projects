@@ -1,5 +1,10 @@
 {% extends 'layout.html' %}
 
 {% block body %}
- <h1>{{id}}</h1>
-{% endblock %}
+ <h1>{{article.title}}</h1>
+ <p>Written by {{article.author}} on {{article.create_data}}</p>
+ <hr>
+ <div>
+     {{article.body | safe}}
+ </div>
+{% endblock %} 
