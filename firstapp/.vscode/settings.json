@@ -1,0 +1,5 @@
+{
+    "python.pythonPath": "/home/kavi/anaconda3/envs/tf_gpu/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": false
+}
